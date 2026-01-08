@@ -17,14 +17,13 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: [true, "Please fill email"],
-      unique: true, // 'unique' boolean hota hai
+      unique: true,
     },
     password: {
       type: String,
       required: [true, "Please fill password field"],
       minLength: [8, "Password should be at least 8 characters"],
     },
-    // YE ZAROORI HAI:
     role: {
       type: String,
       enum: ["Admin", "Manager", "Tenant"],
@@ -40,9 +39,8 @@ const userSchema = new mongoose.Schema(
     },
   },
   { timestamps: true }
-); // Taake pata chale kab account bana
+);
 
-// Export karte waqt 'User' (Capital U) rakhen taake controller mein asani ho
 const User = mongoose.model("User", userSchema);
 
 module.exports = User;
