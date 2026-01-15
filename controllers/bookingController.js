@@ -1,47 +1,105 @@
-const Booking = require("../models/Booking"); // Aapka model file path
+const Booking = require("../models/Booking");
+const Property = require("../models/Property");
 
+// 1. CREATE BOOKING
 exports.createBooking = async (req, res) => {
   try {
-    const { propertyId, tenantId, managerId } = req.body;
+    const { propertyId, tenantId, startDate, endDate } = req.body;
 
-    // Data check karein
-    if (!propertyId || !tenantId || !managerId) {
-      return res.status(400).json({ message: "Sari fields (IDs) lazmi hain!" });
+    if (!propertyId || !tenantId) {
+      return res.status(400).json({ message: "Information missing!" });
+    }
+
+    const existingBooking = await Booking.findOne({
+      propertyId,
+      tenantId,
+      status: "Pending",
+    });
+    if (existingBooking) {
+      return res
+        .status(400)
+        .json({ message: "Request already exists for this property!" });
     }
 
     const newBooking = new Booking({
       propertyId,
       tenantId,
-      managerId,
-      status: "Pending", // Default status
+      status: "Pending",
+      startDate,
+      endDate,
     });
 
     const savedBooking = await newBooking.save();
     res.status(201).json(savedBooking);
   } catch (error) {
     console.error("Booking Error:", error);
-    res.status(500).json({ message: "Server crash ho gya: " + error.message });
+    res.status(500).json({ message: "Server error: " + error.message });
   }
 };
 
-// --- TENANT KI BOOKINGS FETCH KARNE KE LIYE ---
+// 2. GET ALL REQUESTS (Manager Dashboard)
+exports.getManagerRequests = async (req, res) => {
+  try {
+    const requests = await Booking.find()
+      .sort({ createdAt: -1 })
+      .populate("propertyId")
+      .populate("tenantId", "name email");
+
+    res.status(200).json(requests);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching requests: " + error.message });
+  }
+};
+
+// 3. UPDATE STATUS (Approve/Reject logic with Property update)
+exports.updateStatus = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { status } = req.body;
+
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      bookingId,
+      { status: status },
+      { new: true }
+    );
+
+    if (!updatedBooking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Agar Approved ho to Property status Occupied kar do
+    if (status === "Approved") {
+      await Property.findByIdAndUpdate(updatedBooking.propertyId, {
+        status: "Occupied",
+        tenant: updatedBooking.tenantId,
+      });
+    }
+
+    // Agar Reject ho to Property wapis Vacant (safety check)
+    if (status === "Rejected") {
+      await Property.findByIdAndUpdate(updatedBooking.propertyId, {
+        status: "Vacant",
+        tenant: null,
+      });
+    }
+
+    res.status(200).json(updatedBooking);
+  } catch (error) {
+    res.status(500).json({ message: "Update failed: " + error.message });
+  }
+};
+
+// 4. GET TENANT BOOKINGS (History)
 exports.getTenantBookings = async (req, res) => {
   try {
-    const { id } = req.params; // Frontend se aane wali userId
-
-    // Database mein check karein ke is tenantId ki kitni bookings hain
-    // .populate('propertyId') is liye taake property ki details (name, address) bhi mil jayein
+    const { id } = req.params;
     const bookings = await Booking.find({ tenantId: id }).populate(
       "propertyId"
     );
-
-    if (!bookings) {
-      return res.status(404).json({ message: "Koi booking nahi mili!" });
-    }
-
     res.status(200).json(bookings);
   } catch (error) {
-    console.error("Fetch Booking Error:", error);
     res.status(500).json({ message: "Server error: " + error.message });
   }
 };

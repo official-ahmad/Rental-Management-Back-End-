@@ -3,12 +3,12 @@ const mongoose = require("mongoose");
 const bookingSchema = new mongoose.Schema({
   propertyId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Home", // Ensure karein ke aapka property model 'home' hi hai
+    ref: "Home", 
     required: true,
   },
   tenantId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User", // Ensure karein ke aapka user model 'User' hi hai
+    ref: "User", 
     required: true,
   },
   status: {
@@ -16,11 +16,11 @@ const bookingSchema = new mongoose.Schema({
     enum: ["Pending", "Approved", "Rejected"],
     default: "Pending",
   },
+  // bookingDate ko rehne den ya nikal den, timestamps kafi hain
   bookingDate: {
     type: Date,
     default: Date.now,
   },
-});
+}, { timestamps: true }); // <--- YE ZAROOR ADD KAREIN
 
-// YEH LINE THEEK KAREIN - Yehi findOne provide karti hai
 module.exports = mongoose.model("Booking", bookingSchema);

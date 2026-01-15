@@ -4,8 +4,8 @@ const cors = require("cors");
 const connectDB = require("./connect");
 const homeRoutes = require("./routes/homeRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
+const managerRoutes = require("./routes/manager.js");
 
-// Config
 dotenv.config();
 const app = express();
 
@@ -21,6 +21,7 @@ app.use("/api/bookings", bookingRoutes);
 
 // 2. Home API Call karwane ke liye rasta (Endpoint) add karein
 app.use("/api/home", homeRoutes);
+app.use("/api/manager", managerRoutes);
 
 // Basic Route (Checking ke liye)
 app.get("/", (req, res) => {
