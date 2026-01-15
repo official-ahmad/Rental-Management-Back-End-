@@ -2,7 +2,6 @@ const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const connectDB = require("./connect");
-const propertyRoutes = require("./routes/propertyRoutes");
 const homeRoutes = require("./routes/homeRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 
@@ -18,7 +17,6 @@ connectDB();
 
 // Routes
 app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/properties", propertyRoutes);
 app.use("/api/bookings", bookingRoutes);
 
 // 2. Home API Call karwane ke liye rasta (Endpoint) add karein

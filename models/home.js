@@ -18,33 +18,27 @@ const HomePropertySchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
     bedrooms: {
       type: Number,
       required: true,
     },
-
     bathrooms: {
       type: Number,
       required: true,
     },
-
     area: {
       type: String,
       required: true,
     },
-
     description: {
       type: String,
       required: true,
     },
-
     status: {
       type: String,
       enum: ["Vacant", "Occupied"],
       default: "Vacant",
     },
-
     tenant: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -54,4 +48,6 @@ const HomePropertySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Home", HomePropertySchema);
+// FIXED: Is line se "OverwriteModelError" khatam ho jayega
+module.exports =
+  mongoose.models.Home || mongoose.model("Home", HomePropertySchema);

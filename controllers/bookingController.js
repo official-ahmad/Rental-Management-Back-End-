@@ -23,3 +23,25 @@ exports.createBooking = async (req, res) => {
     res.status(500).json({ message: "Server crash ho gya: " + error.message });
   }
 };
+
+// --- TENANT KI BOOKINGS FETCH KARNE KE LIYE ---
+exports.getTenantBookings = async (req, res) => {
+  try {
+    const { id } = req.params; // Frontend se aane wali userId
+
+    // Database mein check karein ke is tenantId ki kitni bookings hain
+    // .populate('propertyId') is liye taake property ki details (name, address) bhi mil jayein
+    const bookings = await Booking.find({ tenantId: id }).populate(
+      "propertyId"
+    );
+
+    if (!bookings) {
+      return res.status(404).json({ message: "Koi booking nahi mili!" });
+    }
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Fetch Booking Error:", error);
+    res.status(500).json({ message: "Server error: " + error.message });
+  }
+};

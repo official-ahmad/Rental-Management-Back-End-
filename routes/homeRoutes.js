@@ -12,7 +12,6 @@ router.get("/all", async (req, res) => {
   }
 });
 
-// 2. POST route pehle se theek hai
 router.post("/add", async (req, res) => {
   try {
     const newProperty = new Home(req.body);
@@ -21,7 +20,7 @@ router.post("/add", async (req, res) => {
   } catch (err) {
     res
       .status(400)
-      .json({ message: "Data save nahi ho saka", error: err.message });
+      .json({ message: "Data Cannot be saved", error: err.message });
   }
 });
 
