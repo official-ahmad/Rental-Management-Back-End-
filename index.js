@@ -15,7 +15,7 @@ app.use(express.json());
 // Yahan "*" ki jagah apna Vercel link dalna security ke liye behtar hai
 app.use(
   cors({
-    origin: "https://rental-management-front-end.vercel.app/",
+    origin: "https://rental-management-front-end.vercel.app",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
