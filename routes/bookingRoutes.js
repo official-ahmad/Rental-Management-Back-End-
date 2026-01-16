@@ -3,17 +3,17 @@ const router = express.Router();
 const Booking = require("../models/Booking");
 const bookingController = require("../controllers/bookingController");
 
-// 1. POST: Create Booking (Home.jsx isi ko hit karta hai)
+// 1. POST: Create Booking
 router.post("/create", bookingController.createBooking);
-router.post("/request", bookingController.createBooking); // Backup path
+router.post("/request", bookingController.createBooking); 
 
-// 2. GET: All Shared Requests (Aapka Manager Dashboard isi ko dhoond raha hai)
+// 2. GET: All Shared Requests 
 router.get("/all-requests", bookingController.getManagerRequests);
 
-// 3. PUT: Update Status (Approve/Reject button ke liye)
+// 3. PUT: Update Status 
 router.put("/update/:bookingId", bookingController.updateStatus);
 
-// 4. GET: Tenant ki bookings (History)
+// 4. GET: Tenant ki bookings
 router.get("/my-booking/:id", bookingController.getTenantBookings);
 
 // 5. DELETE: Cancel Booking

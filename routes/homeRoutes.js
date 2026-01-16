@@ -1,8 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const Home = require("../models/home");
-
-// 1. ISKO UNCOMMENT KAREIN (Slash hata dein)
 router.get("/all", async (req, res) => {
   try {
     const data = await Home.find();

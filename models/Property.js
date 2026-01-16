@@ -23,11 +23,11 @@ const propertySchema = new mongoose.Schema(
       required: true,
     },
     area: {
-      type: String, // e.g., "2000 sqft"
+      type: String, 
       required: true,
     },
     image: {
-      type: String, // Base64 ya URL string
+      type: String, 
     },
     description: {
       type: String,
@@ -38,10 +38,9 @@ const propertySchema = new mongoose.Schema(
       enum: ["Vacant", "Occupied"],
       default: "Vacant",
     },
-    // Yeh field humein bataye gi ke property kis tenant ke paas hai
     tenant: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Check karna aapke User model ka naam yahi hai na?
+      ref: "User",
       default: null,
     },
   },

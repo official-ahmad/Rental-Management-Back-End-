@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-// Controller se functions import kar rahe hain
 const { register, login } = require("../controllers/user");
 
 // 1. Signup Route

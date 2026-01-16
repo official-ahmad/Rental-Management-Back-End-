@@ -77,7 +77,6 @@ exports.updateStatus = async (req, res) => {
       });
     }
 
-    // Agar Reject ho to Property wapis Vacant (safety check)
     if (status === "Rejected") {
       await Property.findByIdAndUpdate(updatedBooking.propertyId, {
         status: "Vacant",

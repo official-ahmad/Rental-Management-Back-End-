@@ -19,11 +19,17 @@ connectDB();
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/bookings", bookingRoutes);
 
-// 2. Home API Call karwane ke liye rasta (Endpoint) add karein
+// --- ADMIN & GENERAL DATA ROUTES
+app.use("/api/users", require("./routes/authRoutes"));
+app.use("/api/properties", managerRoutes);
+// -----------------------------------------------------------
+
+// 2. Home API Call
 app.use("/api/home", homeRoutes);
 app.use("/api/manager", managerRoutes);
+app.use("/api/admin", managerRoutes);
 
-// Basic Route (Checking ke liye)
+// Basic Route
 app.get("/", (req, res) => {
   res.send("Rental Management System API is running...");
 });

@@ -16,11 +16,10 @@ const bookingSchema = new mongoose.Schema({
     enum: ["Pending", "Approved", "Rejected"],
     default: "Pending",
   },
-  // bookingDate ko rehne den ya nikal den, timestamps kafi hain
   bookingDate: {
     type: Date,
     default: Date.now,
   },
-}, { timestamps: true }); // <--- YE ZAROOR ADD KAREIN
+}, { timestamps: true }); 
 
 module.exports = mongoose.model("Booking", bookingSchema);

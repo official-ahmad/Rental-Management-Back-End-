@@ -48,6 +48,5 @@ const HomePropertySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// FIXED: Is line se "OverwriteModelError" khatam ho jayega
 module.exports =
   mongoose.models.Home || mongoose.model("Home", HomePropertySchema);
