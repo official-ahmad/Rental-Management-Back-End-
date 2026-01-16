@@ -12,6 +12,8 @@ router.get("/all-requests", bookingController.getManagerRequests);
 
 // 3. PUT: Update Status 
 router.put("/update/:bookingId", bookingController.updateStatus);
+// 6. PUT: Payment Status Update (Naya Route)
+router.put("/pay/:bookingId", bookingController.updatePaymentStatus);
 
 // 4. GET: Tenant ki bookings
 router.get("/my-booking/:id", bookingController.getTenantBookings);
