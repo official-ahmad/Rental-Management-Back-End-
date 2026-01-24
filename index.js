@@ -11,14 +11,12 @@ const app = express();
 
 app.use(express.json());
 
-// --- CHANGE 1: CORS Settings for Production ---
-// Yahan "*" ki jagah apna Vercel link dalna security ke liye behtar hai
 app.use(
   cors({
     origin: "https://rental-management-front-end.vercel.app",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
-  })
+  }),
 );
 
 // Database Connect
@@ -38,8 +36,6 @@ app.get("/", (req, res) => {
   res.send("Rental Management System API is running on Railway!");
 });
 
-// --- CHANGE 2: Port Configuration for Railway ---
-// Railway hamesha PORT variable provide karta hai, agar wo na mile toh 8000 use karein
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
