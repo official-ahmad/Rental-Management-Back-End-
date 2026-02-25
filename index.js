@@ -13,7 +13,6 @@ app.use(express.json());
 
 app.use(
   cors({
-    // origin: "http://localhost:5173",
     origin: "https://rental-management-front-end.vercel.app",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
@@ -34,9 +33,10 @@ app.use("/api/admin", managerRoutes);
 
 // Basic Route
 app.get("/", (req, res) => {
-  res.send("Rental Management System API is running on Railway!");
+  res.send("Rental Management System API is running!");
 });
 
+// FIXED PORT LOGIC
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
