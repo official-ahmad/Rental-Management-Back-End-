@@ -1,5 +1,5 @@
 const Booking = require("../models/Booking");
-const Property = require("../models/Property");
+const Home = require("../models/home");
 
 // 1. CREATE BOOKING
 exports.createBooking = async (req, res) => {
@@ -62,7 +62,7 @@ exports.updateStatus = async (req, res) => {
     const updatedBooking = await Booking.findByIdAndUpdate(
       bookingId,
       { status: status },
-      { new: true }
+      { new: true },
     );
 
     if (!updatedBooking) {
@@ -70,14 +70,14 @@ exports.updateStatus = async (req, res) => {
     }
 
     if (status === "Approved") {
-      await Property.findByIdAndUpdate(updatedBooking.propertyId, {
+      await Home.findByIdAndUpdate(updatedBooking.propertyId, {
         status: "Occupied",
         tenant: updatedBooking.tenantId,
       });
     }
 
     if (status === "Rejected") {
-      await Property.findByIdAndUpdate(updatedBooking.propertyId, {
+      await Home.findByIdAndUpdate(updatedBooking.propertyId, {
         status: "Vacant",
         tenant: null,
       });
@@ -94,7 +94,7 @@ exports.getTenantBookings = async (req, res) => {
   try {
     const { id } = req.params;
     const bookings = await Booking.find({ tenantId: id }).populate(
-      "propertyId"
+      "propertyId",
     );
     res.status(200).json(bookings);
   } catch (error) {
@@ -109,7 +109,7 @@ exports.updatePaymentStatus = async (req, res) => {
     const updatedBooking = await Booking.findByIdAndUpdate(
       bookingId,
       { paymentStatus: "Paid" },
-      { new: true }
+      { new: true },
     );
 
     if (!updatedBooking) {

@@ -45,7 +45,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "1d" },
     );
 
     res.status(200).json({
@@ -58,5 +58,113 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// --- VERIFY ADMIN ACCESS KEY ---
+exports.verifyAdminAccess = async (req, res) => {
+  try {
+    const { accessKey } = req.body;
+
+    if (!accessKey) {
+      return res.status(400).json({
+        success: false,
+        message: "Access key is required",
+      });
+    }
+
+    const adminAccessKey = process.env.ADMIN_ACCESS_KEY;
+
+    if (accessKey === adminAccessKey) {
+      return res.status(200).json({
+        success: true,
+        message: "Access granted",
+      });
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid access key",
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// --- VERIFY PAGE ACCESS (for /page route) ---
+exports.verifyPageAccess = async (req, res) => {
+  try {
+    const { accessKey } = req.body;
+
+    if (!accessKey) {
+      return res.status(400).json({
+        success: false,
+        message: "Access key is required",
+      });
+    }
+
+    const pageAccessKey = process.env.PAGE_ACCESS_KEY;
+
+    if (accessKey === pageAccessKey) {
+      return res.status(200).json({
+        success: true,
+        message: "Access granted",
+      });
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid access key",
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// --- ADMIN LOGIN (Static Credentials) ---
+exports.adminLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (email !== adminEmail) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    if (password !== adminPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    const token = jwt.sign(
+      { id: "admin_static_id", role: "Admin" },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" },
+    );
+
+    return res.status(200).json({
+      success: true,
+      token,
+      adminId: "admin_static_id",
+      adminName: "System Admin",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

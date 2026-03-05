@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const compression = require("compression");
 const connectDB = require("./connect");
 const homeRoutes = require("./routes/homeRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
@@ -9,11 +10,29 @@ const managerRoutes = require("./routes/manager.js");
 dotenv.config();
 const app = express();
 
-app.use(express.json());
+// Enable GZIP compression for faster responses
+app.use(compression());
+
+// Parse JSON with limit for security
+app.use(express.json({ limit: "10mb" }));
+
+// CORS Configuration - Supports both Local and Live
+const allowedOrigins = [
+  "https://rental-management-front-end.vercel.app", // Live Frontend
+  "http://localhost:5173", // Local Vite Dev Server
+  "http://localhost:3000", // Alternative Local
+];
 
 app.use(
   cors({
-    origin: "https://rental-management-front-end.vercel.app",
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS not allowed"), false);
+    },
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   }),
