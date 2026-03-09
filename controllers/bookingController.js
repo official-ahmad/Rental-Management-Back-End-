@@ -1,6 +1,18 @@
 const Booking = require("../models/Booking");
 const Home = require("../models/home");
 
+const formatTenant = (tenant) => {
+  if (!tenant) return tenant;
+
+  return {
+    _id: tenant._id,
+    email: tenant.email,
+    firstName: tenant.firstName,
+    lastName: tenant.lastName,
+    name: [tenant.firstName, tenant.lastName].filter(Boolean).join(" ").trim(),
+  };
+};
+
 // 1. CREATE BOOKING
 exports.createBooking = async (req, res) => {
   try {
@@ -8,6 +20,17 @@ exports.createBooking = async (req, res) => {
 
     if (!propertyId || !tenantId) {
       return res.status(400).json({ message: "Information missing!" });
+    }
+
+    const property = await Home.findById(propertyId);
+    if (!property) {
+      return res.status(404).json({ message: "Property not found!" });
+    }
+
+    if (property.status === "Occupied") {
+      return res
+        .status(400)
+        .json({ message: "This property is already occupied!" });
     }
 
     const existingBooking = await Booking.findOne({
@@ -43,9 +66,14 @@ exports.getManagerRequests = async (req, res) => {
     const requests = await Booking.find()
       .sort({ createdAt: -1 })
       .populate("propertyId")
-      .populate("tenantId", "name email");
+      .populate("tenantId", "firstName lastName email");
 
-    res.status(200).json(requests);
+    const normalizedRequests = requests.map((request) => ({
+      ...request.toObject(),
+      tenantId: formatTenant(request.tenantId),
+    }));
+
+    res.status(200).json(normalizedRequests);
   } catch (error) {
     res
       .status(500)
@@ -93,10 +121,16 @@ exports.updateStatus = async (req, res) => {
 exports.getTenantBookings = async (req, res) => {
   try {
     const { id } = req.params;
-    const bookings = await Booking.find({ tenantId: id }).populate(
-      "propertyId",
-    );
-    res.status(200).json(bookings);
+    const bookings = await Booking.find({ tenantId: id })
+      .populate("propertyId")
+      .populate("tenantId", "firstName lastName email");
+
+    const normalizedBookings = bookings.map((booking) => ({
+      ...booking.toObject(),
+      tenantId: formatTenant(booking.tenantId),
+    }));
+
+    res.status(200).json(normalizedBookings);
   } catch (error) {
     res.status(500).json({ message: "Server error: " + error.message });
   }
@@ -121,5 +155,27 @@ exports.updatePaymentStatus = async (req, res) => {
     res
       .status(500)
       .json({ message: "Database update failed: " + error.message });
+  }
+};
+
+// 6. CANCEL BOOKING (moved from inline route)
+exports.cancelBooking = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findById(bookingId);
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found!" });
+    }
+    if (booking.status !== "Pending") {
+      return res
+        .status(400)
+        .json({ message: "Only pending bookings can be cancelled." });
+    }
+
+    await Booking.findByIdAndDelete(bookingId);
+    res.status(200).json({ message: "Booking cancelled successfully." });
+  } catch (error) {
+    res.status(500).json({ message: "Cancellation failed: " + error.message });
   }
 };

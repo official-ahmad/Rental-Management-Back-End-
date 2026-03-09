@@ -34,10 +34,20 @@ const HomePropertySchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    category: {
+      type: String,
+      default: "Apartment",
+      trim: true,
+    },
     status: {
       type: String,
       enum: ["Vacant", "Occupied"],
       default: "Vacant",
+    },
+    managerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
     tenant: {
       type: mongoose.Schema.Types.ObjectId,
@@ -45,7 +55,7 @@ const HomePropertySchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports =

@@ -3,9 +3,14 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const compression = require("compression");
 const connectDB = require("./connect");
+const errorHandler = require("./middleware/errorHandler");
+const { verifyToken, authorizeRoles } = require("./middleware/auth");
+
+// Route imports
+const authRoutes = require("./routes/authRoutes");
 const homeRoutes = require("./routes/homeRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
-const managerRoutes = require("./routes/manager.js");
+const managerRoutes = require("./routes/manager");
 
 dotenv.config();
 const app = express();
@@ -18,15 +23,14 @@ app.use(express.json({ limit: "10mb" }));
 
 // CORS Configuration - Supports both Local and Live
 const allowedOrigins = [
-  "https://rental-management-front-end.vercel.app", // Live Frontend
-  "http://localhost:5173", // Local Vite Dev Server
-  "http://localhost:3000", // Alternative Local
+  "https://rental-management-front-end.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (mobile apps, Postman, etc.)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
@@ -41,21 +45,27 @@ app.use(
 // Database Connect
 connectDB();
 
-// Routes
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/bookings", bookingRoutes);
-app.use("/api/users", require("./routes/authRoutes"));
-app.use("/api/properties", managerRoutes);
+// Public Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/home", homeRoutes);
-app.use("/api/manager", managerRoutes);
-app.use("/api/admin", managerRoutes);
 
-// Basic Route
+// Protected Routes — require valid JWT
+app.use("/api/bookings", verifyToken, bookingRoutes);
+app.use(
+  "/api/manager",
+  verifyToken,
+  authorizeRoles("Manager", "Admin"),
+  managerRoutes,
+);
+
+// Health Check
 app.get("/", (req, res) => {
   res.send("Rental Management System API is running!");
 });
 
-// FIXED PORT LOGIC
+// Global Error Handler (must be after all routes)
+app.use(errorHandler);
+
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {

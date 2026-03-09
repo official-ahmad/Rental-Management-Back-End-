@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-const Booking = require("../models/Booking");
 const bookingController = require("../controllers/bookingController");
 
 // 1. POST: Create Booking
@@ -13,26 +12,13 @@ router.get("/all-requests", bookingController.getManagerRequests);
 // 3. PUT: Update Status
 router.put("/update/:bookingId", bookingController.updateStatus);
 
-// 6. PUT: Payment Status Update
+// 4. PUT: Payment Status Update
 router.put("/pay/:bookingId", bookingController.updatePaymentStatus);
 
-// 4. GET: Tenant ki bookings
+// 5. GET: Tenant bookings
 router.get("/my-booking/:id", bookingController.getTenantBookings);
 
-// 5. DELETE: Cancel Booking
-router.delete("/cancel/:bookingId", async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    const booking = await Booking.findById(bookingId);
-    if (!booking) return res.status(404).json({ message: "Not found!" });
-    if (booking.status !== "Pending")
-      return res.status(400).json({ message: "Cannot cancel now!" });
-
-    await Booking.findByIdAndDelete(bookingId);
-    res.status(200).json({ message: "Cancelled!" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// 6. DELETE: Cancel Booking
+router.delete("/cancel/:bookingId", bookingController.cancelBooking);
 
 module.exports = router;

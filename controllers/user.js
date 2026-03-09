@@ -53,6 +53,7 @@ exports.login = async (req, res) => {
       user: {
         _id: user._id,
         name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
         role: user.role,
       },
     });
@@ -61,71 +62,31 @@ exports.login = async (req, res) => {
   }
 };
 
-// --- VERIFY ADMIN ACCESS KEY ---
-exports.verifyAdminAccess = async (req, res) => {
+// --- VERIFY ACCESS KEY (shared for admin & page access) ---
+const verifyAccessKey = (envKey) => async (req, res) => {
   try {
     const { accessKey } = req.body;
 
     if (!accessKey) {
-      return res.status(400).json({
-        success: false,
-        message: "Access key is required",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Access key is required" });
     }
 
-    const adminAccessKey = process.env.ADMIN_ACCESS_KEY;
-
-    if (accessKey === adminAccessKey) {
-      return res.status(200).json({
-        success: true,
-        message: "Access granted",
-      });
-    } else {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid access key",
-      });
+    if (accessKey === process.env[envKey]) {
+      return res.status(200).json({ success: true, message: "Access granted" });
     }
+
+    return res
+      .status(401)
+      .json({ success: false, message: "Invalid access key" });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// --- VERIFY PAGE ACCESS (for /page route) ---
-exports.verifyPageAccess = async (req, res) => {
-  try {
-    const { accessKey } = req.body;
-
-    if (!accessKey) {
-      return res.status(400).json({
-        success: false,
-        message: "Access key is required",
-      });
-    }
-
-    const pageAccessKey = process.env.PAGE_ACCESS_KEY;
-
-    if (accessKey === pageAccessKey) {
-      return res.status(200).json({
-        success: true,
-        message: "Access granted",
-      });
-    } else {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid access key",
-      });
-    }
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+exports.verifyAdminAccess = verifyAccessKey("ADMIN_ACCESS_KEY");
+exports.verifyPageAccess = verifyAccessKey("PAGE_ACCESS_KEY");
 
 // --- ADMIN LOGIN (Static Credentials) ---
 exports.adminLogin = async (req, res) => {
