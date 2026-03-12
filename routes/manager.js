@@ -48,6 +48,19 @@ router.delete("/delete/:id", async (req, res) => {
   }
 });
 
+router.delete("/users/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (user.role === "Admin")
+      return res.status(403).json({ message: "Cannot delete admin accounts" });
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "User removed successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to remove user" });
+  }
+});
+
 router.put("/update/:id", async (req, res) => {
   try {
     await Home.findByIdAndUpdate(req.params.id, req.body);
