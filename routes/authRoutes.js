@@ -6,6 +6,8 @@ const {
   verifyAdminAccess,
   verifyPageAccess,
   adminLogin,
+  forgotPassword,
+  resetPassword,
 } = require("../controllers/user");
 
 // 1. Signup Route
@@ -22,5 +24,11 @@ router.post("/verify-page-access", verifyPageAccess);
 
 // 5. Admin Login (Static Credentials)
 router.post("/admin-login", adminLogin);
+
+// 6. Forgot Password
+router.post("/forgot-password", forgotPassword);
+
+// 7. Reset Password
+router.post("/reset-password/:token", resetPassword);
 
 module.exports = router;
