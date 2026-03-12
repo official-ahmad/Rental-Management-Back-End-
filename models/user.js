@@ -17,7 +17,6 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: [true, "Please fill email"],
-      unique: true,
     },
     password: {
       type: String,
@@ -38,7 +37,10 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
+
+// Same email can exist for different roles, but not duplicate within the same role
+userSchema.index({ email: 1, role: 1 }, { unique: true });
 
 module.exports = mongoose.models.User || mongoose.model("User", userSchema);

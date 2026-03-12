@@ -7,9 +7,11 @@ exports.register = async (req, res) => {
   try {
     const { firstName, lastName, email, password, role } = req.body;
 
-    const userExist = await User.findOne({ email });
+    const userExist = await User.findOne({ email, role });
     if (userExist)
-      return res.status(400).json({ message: "Email already registered" });
+      return res
+        .status(400)
+        .json({ message: "Email already registered for this role" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -33,10 +35,13 @@ exports.register = async (req, res) => {
 // --- LOGIN LOGIC ---
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!role) return res.status(400).json({ message: "Role is required" });
+
+    const user = await User.findOne({ email, role });
+    if (!user)
+      return res.status(404).json({ message: "User not found for this role" });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
