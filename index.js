@@ -21,9 +21,10 @@ app.use(compression());
 // Parse JSON with limit for security
 app.use(express.json({ limit: "10mb" }));
 
-// CORS Configuration - Supports both Local and Live
 const allowedOrigins = [
   "https://rental-management-front-end.vercel.app",
+  "https://rentify.software",
+  "https://www.rentify.software",
   "http://localhost:5173",
   "http://localhost:3000",
 ];

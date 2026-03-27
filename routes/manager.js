@@ -3,9 +3,59 @@ const router = express.Router();
 const Home = require("../models/home");
 const User = require("../models/user");
 
+const isObjectId = (value) => /^[a-f\d]{24}$/i.test(String(value || ""));
+
+const toNumberOrZero = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+};
+
+const buildPropertyPayload = (input = {}) => ({
+  propertyName: input.propertyName,
+  location: input.location,
+  rentAmount: toNumberOrZero(input.rentAmount),
+  image: input.image,
+  bedrooms: toNumberOrZero(input.bedrooms),
+  bathrooms: toNumberOrZero(input.bathrooms),
+  area: String(input.area || ""),
+  description: input.description,
+  category: input.category || "Apartment",
+  status: input.status || "Vacant",
+  managerId: input.managerId || null,
+});
+
+const getCreatorMeta = async (req) => {
+  const fallbackName = req.user?.role === "Admin" ? "System Admin" : "Unknown";
+  const creator = {
+    userId: req.user?.id || "",
+    role: req.user?.role || "",
+    name: fallbackName,
+    email: "",
+  };
+
+  if (isObjectId(req.user?.id)) {
+    const user = await User.findById(req.user.id).select(
+      "firstName lastName email role",
+    );
+    if (user) {
+      creator.name = [user.firstName, user.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      creator.email = user.email || "";
+      creator.role = user.role || creator.role;
+    }
+  }
+
+  return creator;
+};
+
 router.get("/properties", async (req, res) => {
   try {
-    const data = await Home.find().sort({ createdAt: -1 });
+    const data = await Home.find()
+      .sort({ createdAt: -1 })
+      .populate("managerId", "firstName lastName email")
+      .populate("tenant", "firstName lastName email");
     res.json(data);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -29,7 +79,20 @@ router.get("/users", async (req, res) => {
 
 router.post("/add", async (req, res) => {
   try {
-    const newProperty = new Home(req.body);
+    const payload = buildPropertyPayload(req.body);
+    if (
+      !payload.managerId &&
+      req.user?.role === "Manager" &&
+      isObjectId(req.user?.id)
+    ) {
+      payload.managerId = req.user.id;
+    }
+    const creator = await getCreatorMeta(req);
+
+    const newProperty = new Home({
+      ...payload,
+      createdBy: creator,
+    });
     await newProperty.save();
     res.status(201).json({ message: "Property Added Successfully" });
   } catch (err) {
@@ -63,7 +126,8 @@ router.delete("/users/:id", async (req, res) => {
 
 router.put("/update/:id", async (req, res) => {
   try {
-    await Home.findByIdAndUpdate(req.params.id, req.body);
+    const payload = buildPropertyPayload(req.body);
+    await Home.findByIdAndUpdate(req.params.id, payload);
     res.json({ message: "Property Updated" });
   } catch (err) {
     res.status(400).json({ message: "Update failed" });

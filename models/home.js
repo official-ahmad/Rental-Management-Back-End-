@@ -49,6 +49,27 @@ const HomePropertySchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    createdBy: {
+      userId: {
+        type: String,
+        default: null,
+      },
+      name: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      role: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      email: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+    },
     tenant: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
