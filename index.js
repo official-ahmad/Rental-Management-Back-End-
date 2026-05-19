@@ -11,6 +11,7 @@ const authRoutes = require("./routes/authRoutes");
 const homeRoutes = require("./routes/homeRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const managerRoutes = require("./routes/manager");
+const feedbackRoutes = require("./routes/feedbackRoutes");
 
 dotenv.config();
 const app = express();
@@ -49,6 +50,7 @@ connectDB();
 // Public Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/home", homeRoutes);
+app.use("/api/feedback", feedbackRoutes);
 
 // Protected Routes — require valid JWT
 app.use("/api/bookings", verifyToken, bookingRoutes);
