@@ -4,6 +4,7 @@ const cors = require("cors");
 const compression = require("compression");
 const connectDB = require("./connect");
 const errorHandler = require("./middleware/errorHandler");
+const auditMiddleware = require("./middleware/auditLogger");
 const { verifyToken, authorizeRoles } = require("./middleware/auth");
 
 // Route imports
@@ -12,6 +13,8 @@ const homeRoutes = require("./routes/homeRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const managerRoutes = require("./routes/manager");
 const feedbackRoutes = require("./routes/feedbackRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
+const auditRoutes = require("./routes/auditRoutes");
 
 dotenv.config();
 const app = express();
@@ -47,6 +50,9 @@ app.use(
 // Database Connect
 connectDB();
 
+// Apply audit middleware to all requests (logs after response)
+app.use(auditMiddleware);
+
 // Public Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/home", homeRoutes);
@@ -54,11 +60,18 @@ app.use("/api/feedback", feedbackRoutes);
 
 // Protected Routes — require valid JWT
 app.use("/api/bookings", verifyToken, bookingRoutes);
+app.use("/api/payments", verifyToken, paymentRoutes);
 app.use(
   "/api/manager",
   verifyToken,
   authorizeRoles("Manager", "Admin"),
   managerRoutes,
+);
+app.use(
+  "/api/audit-logs",
+  verifyToken,
+  authorizeRoles("Admin"),
+  auditRoutes,
 );
 
 // Health Check
