@@ -6,29 +6,36 @@ const {
   verifyAdminAccess,
   verifyPageAccess,
   adminLogin,
+  getAdminProfile,
+  updateAdminProfile,
   forgotPassword,
+  verifyResetOtp,
   resetPassword,
 } = require("../controllers/user");
+const { verifyToken, authorizeRoles } = require("../middleware/auth");
 
-// 1. Signup Route
+
 router.post("/register", register);
 
-// 2. Login Route
+
 router.post("/login", login);
 
-// 3. Verify Admin Access Key
+
 router.post("/verify-admin-access", verifyAdminAccess);
 
-// 4. Verify Page Access Key (for /page route)
+
 router.post("/verify-page-access", verifyPageAccess);
 
-// 5. Admin Login (Static Credentials)
+
 router.post("/admin-login", adminLogin);
+router.get("/admin-profile", verifyToken, authorizeRoles("Admin"), getAdminProfile);
+router.put("/admin-profile", verifyToken, authorizeRoles("Admin"), updateAdminProfile);
 
-// 6. Forgot Password
+
 router.post("/forgot-password", forgotPassword);
+router.post("/verify-reset-otp", verifyResetOtp);
 
-// 7. Reset Password
+
 router.post("/reset-password/:token", resetPassword);
 
 module.exports = router;

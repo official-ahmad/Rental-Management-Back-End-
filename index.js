@@ -7,7 +7,6 @@ const errorHandler = require("./middleware/errorHandler");
 const auditMiddleware = require("./middleware/auditLogger");
 const { verifyToken, authorizeRoles } = require("./middleware/auth");
 
-// Route imports
 const authRoutes = require("./routes/authRoutes");
 const homeRoutes = require("./routes/homeRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
@@ -16,21 +15,17 @@ const feedbackRoutes = require("./routes/feedbackRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const auditRoutes = require("./routes/auditRoutes");
 
-dotenv.config();
+dotenv.config({ override: true });
 const app = express();
 
-// Enable GZIP compression for faster responses
 app.use(compression());
 
-// Parse JSON with limit for security
 app.use(express.json({ limit: "10mb" }));
 
 const allowedOrigins = [
-  "https://rental-management-front-end.vercel.app",
-  "https://rentify.software",
-  "https://www.rentify.software",
   "http://localhost:5173",
-  "http://localhost:3000",
+  "*",
+  "https://www.rentify.software/",
 ];
 
 app.use(
@@ -42,23 +37,19 @@ app.use(
       }
       return callback(new Error("CORS not allowed"), false);
     },
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   }),
 );
 
-// Database Connect
 connectDB();
 
-// Apply audit middleware to all requests (logs after response)
 app.use(auditMiddleware);
 
-// Public Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/home", homeRoutes);
 app.use("/api/feedback", feedbackRoutes);
 
-// Protected Routes — require valid JWT
 app.use("/api/bookings", verifyToken, bookingRoutes);
 app.use("/api/payments", verifyToken, paymentRoutes);
 app.use(
@@ -67,19 +58,12 @@ app.use(
   authorizeRoles("Manager", "Admin"),
   managerRoutes,
 );
-app.use(
-  "/api/audit-logs",
-  verifyToken,
-  authorizeRoles("Admin"),
-  auditRoutes,
-);
+app.use("/api/audit-logs", verifyToken, authorizeRoles("Admin"), auditRoutes);
 
-// Health Check
 app.get("/", (req, res) => {
   res.send("Rental Management System API is running!");
 });
 
-// Global Error Handler (must be after all routes)
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 8000;

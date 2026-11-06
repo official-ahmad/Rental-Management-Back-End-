@@ -13,7 +13,7 @@ const formatTenant = (tenant) => {
   };
 };
 
-// 1. CREATE BOOKING
+
 exports.createBooking = async (req, res) => {
   try {
     const { propertyId, tenantId, startDate, endDate } = req.body;
@@ -60,7 +60,7 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-// 2. GET ALL REQUESTS (Manager Dashboard)
+
 exports.getManagerRequests = async (req, res) => {
   try {
     const requests = await Booking.find()
@@ -81,7 +81,7 @@ exports.getManagerRequests = async (req, res) => {
   }
 };
 
-// 3. UPDATE STATUS (Approve/Reject logic)
+
 exports.updateStatus = async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -117,7 +117,7 @@ exports.updateStatus = async (req, res) => {
   }
 };
 
-// 4. GET TENANT BOOKINGS (History)
+
 exports.getTenantBookings = async (req, res) => {
   try {
     const { id } = req.params;
@@ -136,7 +136,7 @@ exports.getTenantBookings = async (req, res) => {
   }
 };
 
-// 5. UPDATE PAYMENT STATUS (Naya Function jo missing tha)
+
 exports.updatePaymentStatus = async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -158,7 +158,7 @@ exports.updatePaymentStatus = async (req, res) => {
   }
 };
 
-// 6. CANCEL BOOKING (moved from inline route)
+
 exports.cancelBooking = async (req, res) => {
   try {
     const { bookingId } = req.params;

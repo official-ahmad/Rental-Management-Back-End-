@@ -3,8 +3,14 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
+const mongoose = require("mongoose");
+const {
+  MAX_FAILURES,
+  getStatus,
+  recordFailure,
+  clearFailures,
+} = require("../middleware/adminLoginLimiter");
 
-// --- REGISTER LOGIC ---
 exports.register = async (req, res) => {
   try {
     const { firstName, lastName, email, password, role } = req.body;
@@ -34,7 +40,6 @@ exports.register = async (req, res) => {
   }
 };
 
-// --- LOGIN LOGIC ---
 exports.login = async (req, res) => {
   try {
     const { email, password, role } = req.body;
@@ -44,6 +49,12 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email, role });
     if (!user)
       return res.status(404).json({ message: "User not found for this role" });
+
+    if (user.isSuspended) {
+      return res.status(403).json({
+        message: "You cannot login, Access is restricted by Admin.",
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
@@ -69,15 +80,15 @@ exports.login = async (req, res) => {
   }
 };
 
-// --- VERIFY ACCESS KEY (shared for admin & page access) ---
 const verifyAccessKey = (envKey) => async (req, res) => {
   try {
     const { accessKey } = req.body;
 
     if (!accessKey) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Access key is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Access key is required",
+      });
     }
 
     if (accessKey === process.env[envKey]) {
@@ -95,30 +106,88 @@ const verifyAccessKey = (envKey) => async (req, res) => {
 exports.verifyAdminAccess = verifyAccessKey("ADMIN_ACCESS_KEY");
 exports.verifyPageAccess = verifyAccessKey("PAGE_ACCESS_KEY");
 
-// --- ADMIN LOGIN (Static Credentials) ---
 exports.adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const status = getStatus(req);
 
-    const adminEmail = process.env.ADMIN_EMAIL;
+    if (status.locked) {
+      return res.status(429).json({
+        success: false,
+        message: "Too many failed attempts. Try again in 15 minutes.",
+        retryAfterSeconds: status.retryAfterSeconds,
+      });
+    }
+
+    const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
     const adminPassword = process.env.ADMIN_PASSWORD;
+    let admin = await User.findOne({
+      role: "Admin",
+      email: adminEmail,
+    });
 
-    if (email !== adminEmail) {
+    if (!admin) {
+      if (email?.trim().toLowerCase() !== adminEmail) {
+        const failed = recordFailure(req);
+        if (failed.locked) {
+          return res.status(429).json({
+            success: false,
+            message: "Too many failed attempts. Try again in 15 minutes.",
+            retryAfterSeconds: failed.retryAfterSeconds,
+          });
+        }
+        return res.status(404).json({
+          success: false,
+          message: "Admin not found",
+          attemptsRemaining: Math.max(0, MAX_FAILURES - failed.failures),
+        });
+      }
+
+      admin = await User.create({
+        firstName: "System",
+        lastName: "Admin",
+        email: adminEmail,
+        password: await bcrypt.hash(adminPassword, 12),
+        role: "Admin",
+      });
+    }
+
+    if (email?.trim().toLowerCase() !== admin.email.toLowerCase()) {
+      const failed = recordFailure(req);
+      if (failed.locked) {
+        return res.status(429).json({
+          success: false,
+          message: "Too many failed attempts. Try again in 15 minutes.",
+          retryAfterSeconds: failed.retryAfterSeconds,
+        });
+      }
       return res.status(404).json({
         success: false,
         message: "Admin not found",
+        attemptsRemaining: Math.max(0, MAX_FAILURES - failed.failures),
       });
     }
 
-    if (password !== adminPassword) {
+    const passwordMatches = await bcrypt.compare(password || "", admin.password);
+    if (!passwordMatches) {
+      const failed = recordFailure(req);
+      if (failed.locked) {
+        return res.status(429).json({
+          success: false,
+          message: "Too many failed attempts. Try again in 15 minutes.",
+          retryAfterSeconds: failed.retryAfterSeconds,
+        });
+      }
       return res.status(400).json({
         success: false,
         message: "Invalid credentials",
+        attemptsRemaining: Math.max(0, MAX_FAILURES - failed.failures),
       });
     }
 
+    clearFailures(req);
     const token = jwt.sign(
-      { id: "admin_static_id", role: "Admin" },
+      { id: admin._id.toString(), role: "Admin" },
       process.env.JWT_SECRET,
       { expiresIn: "1d" },
     );
@@ -126,8 +195,9 @@ exports.adminLogin = async (req, res) => {
     return res.status(200).json({
       success: true,
       token,
-      adminId: "admin_static_id",
-      adminName: "System Admin",
+      adminId: admin._id,
+      adminName: `${admin.firstName} ${admin.lastName}`.trim(),
+      adminEmail: admin.email,
     });
   } catch (error) {
     res.status(500).json({
@@ -137,7 +207,93 @@ exports.adminLogin = async (req, res) => {
   }
 };
 
-// --- FORGOT PASSWORD ---
+exports.getAdminProfile = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+      return res.status(401).json({ message: "Session expired. Please login again." });
+    }
+    const admin = await User.findOne({ _id: req.user.id, role: "Admin" }).select(
+      "firstName lastName email phone role createdAt updatedAt",
+    );
+    if (!admin) return res.status(404).json({ message: "Admin profile not found" });
+    res.json({ profile: admin });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load admin profile" });
+  }
+};
+
+exports.updateAdminProfile = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+      return res.status(401).json({ message: "Session expired. Please login again." });
+    }
+    const { firstName, lastName, email, phone, currentPassword, newPassword } =
+      req.body;
+    const admin = await User.findOne({ _id: req.user.id, role: "Admin" });
+    if (!admin) return res.status(404).json({ message: "Admin profile not found" });
+
+    if (!firstName?.trim() || !lastName?.trim() || !email?.trim()) {
+      return res.status(400).json({
+        message: "First name, last name and email are required",
+      });
+    }
+
+    const emailExists = await User.findOne({
+      email: email.trim().toLowerCase(),
+      role: "Admin",
+      _id: { $ne: admin._id },
+    });
+    if (emailExists) {
+      return res.status(409).json({ message: "Admin email is already in use" });
+    }
+
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: "Current password is required" });
+      }
+      const currentMatches = await bcrypt.compare(currentPassword, admin.password);
+      if (!currentMatches) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "New password must be at least 8 characters" });
+      }
+      admin.password = await bcrypt.hash(newPassword, 12);
+    }
+
+    admin.firstName = firstName.trim();
+    admin.lastName = lastName.trim();
+    admin.email = email.trim().toLowerCase();
+    admin.phone = phone?.trim() || "";
+    await admin.save();
+
+    res.json({
+      message: "Admin profile updated successfully",
+      profile: {
+        _id: admin._id,
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+        email: admin.email,
+        phone: admin.phone,
+        role: admin.role,
+      },
+    });
+  } catch (error) {
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message: Object.values(error.errors)
+          .map((validationError) => validationError.message)
+          .join(". "),
+      });
+    }
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "Admin email is already in use" });
+    }
+    console.error("Admin profile update error:", error);
+    res.status(500).json({ message: "Failed to update admin profile" });
+  }
+};
+
 exports.forgotPassword = async (req, res) => {
   try {
     const { email, role } = req.body;
@@ -146,68 +302,101 @@ exports.forgotPassword = async (req, res) => {
       return res.status(400).json({ message: "Email and role are required" });
     }
 
-    // Block admin password reset
-    if (role === "Admin") {
-      return res.status(403).json({
-        message: "Password cannot be reset. Contact Developer to access it.",
-      });
-    }
-
-    const user = await User.findOne({ email, role });
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail, role });
     if (!user) {
       return res
         .status(404)
         .json({ message: "No account found with this email for this role" });
     }
+    if (
+      !process.env.ADMIN_EMAIL ||
+      !process.env.EMAIL_APP_PASSWORD ||
+      process.env.EMAIL_APP_PASSWORD.includes("paste_your")
+    ) {
+      return res.status(503).json({
+        message: "Email service is not configured. Add a Gmail App Password in the backend .env file.",
+      });
+    }
 
-    // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    const otpHash = crypto
       .createHash("sha256")
-      .update(resetToken)
+      .update(otp)
       .digest("hex");
 
-    user.resetPasswordToken = hashedToken;
-    user.resetPasswordTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 minutes
-    await user.save();
-
-    // Build reset URL
-    const frontendURL =
-      process.env.FRONTEND_URL ||
-      "https://rental-management-front-end.vercel.app";
-    const resetURL = `${frontendURL}/reset-password/${resetToken}?role=${role}`;
-
-    // Send email
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: process.env.ADMIN_EMAIL,
-        pass: process.env.EMAIL_APP_PASSWORD,
+        user: process.env.ADMIN_EMAIL?.trim(),
+        pass: process.env.EMAIL_APP_PASSWORD?.replace(/\s/g, ""),
       },
     });
 
     await transporter.sendMail({
       from: `"RentManager" <${process.env.ADMIN_EMAIL}>`,
-      to: email,
-      subject: "Password Reset - RentManager",
+      to: normalizedEmail,
+      subject: "Your Rentify password reset OTP",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background: #f8fafc; border-radius: 16px;">
-          <h2 style="color: #0f172a; margin-bottom: 8px;">Password Reset</h2>
-          <p style="color: #64748b;">You requested a password reset for your <strong>${role}</strong> account.</p>
-          <a href="${resetURL}" style="display: inline-block; margin: 20px 0; padding: 14px 28px; background: #059669; color: white; text-decoration: none; border-radius: 10px; font-weight: bold;">Reset Password</a>
-          <p style="color: #94a3b8; font-size: 13px;">This link expires in 15 minutes. If you didn't request this, ignore this email.</p>
+          <h2 style="color: #0f172a; margin-bottom: 8px;">Password reset OTP</h2>
+          <p style="color: #64748b;">Use this one-time code to reset your <strong>${role}</strong> account password.</p>
+          <div style="margin: 24px 0; padding: 18px; text-align: center; background: #0f172a; color: #fff; border-radius: 12px; font-size: 32px; letter-spacing: 10px; font-weight: bold;">${otp}</div>
+          <p style="color: #94a3b8; font-size: 13px;">This code expires in 10 minutes. If you didn't request this, ignore this email.</p>
         </div>
       `,
     });
 
-    res.status(200).json({ message: "Reset link sent to your email" });
+    user.resetOtpHash = otpHash;
+    user.resetOtpExpiry = Date.now() + 10 * 60 * 1000;
+    user.resetPasswordToken = null;
+    user.resetPasswordTokenExpiry = null;
+    await user.save();
+
+    res.status(200).json({ message: "OTP sent to your email" });
   } catch (error) {
     console.error("Forgot Password Error:", error);
+    if (["EAUTH", "ECONNECTION", "ETIMEDOUT", "EDNS"].includes(error.code)) {
+      return res.status(503).json({
+        message: "Unable to send email. Please verify the Gmail App Password in Back-End/.env.",
+      });
+    }
     res.status(500).json({ message: "Failed to send reset email" });
   }
 };
 
-// --- RESET PASSWORD ---
+exports.verifyResetOtp = async (req, res) => {
+  try {
+    const { email, role, otp } = req.body;
+    if (!email || !role || !/^\d{6}$/.test(String(otp || ""))) {
+      return res.status(400).json({ message: "Email, role and a valid 6-digit OTP are required" });
+    }
+
+    const user = await User.findOne({
+      email: email.trim().toLowerCase(),
+      role,
+      resetOtpHash: crypto.createHash("sha256").update(String(otp)).digest("hex"),
+      resetOtpExpiry: { $gt: Date.now() },
+    });
+    if (!user) return res.status(400).json({ message: "Invalid or expired OTP" });
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    user.resetPasswordToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+    user.resetPasswordTokenExpiry = Date.now() + 10 * 60 * 1000;
+    user.resetOtpHash = null;
+    user.resetOtpExpiry = null;
+    await user.save();
+
+    res.status(200).json({ message: "OTP verified", resetToken });
+  } catch (error) {
+    console.error("Verify Reset OTP Error:", error);
+    res.status(500).json({ message: "Failed to verify OTP" });
+  }
+};
+
 exports.resetPassword = async (req, res) => {
   try {
     const { token } = req.params;
@@ -218,11 +407,8 @@ exports.resetPassword = async (req, res) => {
         .status(400)
         .json({ message: "Password and role are required" });
     }
-
-    if (role === "Admin") {
-      return res.status(403).json({
-        message: "Password cannot be reset. Contact Developer to access it.",
-      });
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters" });
     }
 
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
@@ -240,6 +426,8 @@ exports.resetPassword = async (req, res) => {
     user.password = await bcrypt.hash(password, 10);
     user.resetPasswordToken = null;
     user.resetPasswordTokenExpiry = null;
+    user.resetOtpHash = null;
+    user.resetOtpExpiry = null;
     await user.save();
 
     res.status(200).json({ message: "Password reset successfully" });

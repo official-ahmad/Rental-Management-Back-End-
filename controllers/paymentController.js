@@ -3,7 +3,7 @@ const Booking = require("../models/Booking");
 const User = require("../models/user");
 const Home = require("../models/home");
 
-// Get payment history (filtered by user role)
+
 exports.getPaymentHistory = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -17,7 +17,7 @@ exports.getPaymentHistory = async (req, res) => {
     } else if (userRole === "Tenant") {
       filter = { tenantId: userId };
     } else if (userRole === "Admin") {
-      // Admin can see all payments
+
       filter = {};
     }
 
@@ -36,7 +36,7 @@ exports.getPaymentHistory = async (req, res) => {
   }
 };
 
-// Get single payment details
+
 exports.getPaymentById = async (req, res) => {
   try {
     const { paymentId } = req.params;
@@ -58,7 +58,7 @@ exports.getPaymentById = async (req, res) => {
   }
 };
 
-// Log payment (called when payment is made)
+
 exports.logPayment = async (req, res) => {
   try {
     const {
@@ -71,7 +71,7 @@ exports.logPayment = async (req, res) => {
     } = req.body;
     const managerId = req.user.id;
 
-    // Generate unique transaction ID
+
     const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
     const newPayment = new PaymentLog({
@@ -99,7 +99,7 @@ exports.logPayment = async (req, res) => {
   }
 };
 
-// Get payment statistics (Admin/Manager)
+
 exports.getPaymentStats = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -124,7 +124,7 @@ exports.getPaymentStats = async (req, res) => {
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
 
-    // Monthly breakdown
+
     const monthlyRevenue = await PaymentLog.aggregate([
       { $match: { ...filter, status: "completed" } },
       {
@@ -155,7 +155,7 @@ exports.getPaymentStats = async (req, res) => {
   }
 };
 
-// Mark receipt as generated
+
 exports.markReceiptGenerated = async (req, res) => {
   try {
     const { paymentId } = req.params;
@@ -178,7 +178,7 @@ exports.markReceiptGenerated = async (req, res) => {
   }
 };
 
-// Get payments due (pending)
+
 exports.getPendingPayments = async (req, res) => {
   try {
     const userId = req.user.id;

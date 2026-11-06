@@ -8,13 +8,13 @@ const path = require("path");
 
 const router = express.Router();
 
-// Get payment history (Manager, Tenant, Admin)
+
 router.get("/", verifyToken, paymentController.getPaymentHistory);
 
-// Get single payment details
+
 router.get("/:paymentId", verifyToken, paymentController.getPaymentById);
 
-// Log new payment (Manager creates entry)
+
 router.post(
   "/",
   verifyToken,
@@ -22,7 +22,7 @@ router.post(
   paymentController.logPayment
 );
 
-// Get payment statistics (Manager, Admin)
+
 router.get(
   "/stats/overview",
   verifyToken,
@@ -30,21 +30,21 @@ router.get(
   paymentController.getPaymentStats
 );
 
-// Get pending payments
+
 router.get(
   "/pending/list",
   verifyToken,
   paymentController.getPendingPayments
 );
 
-// Mark receipt as generated
+
 router.put(
   "/:paymentId/receipt",
   verifyToken,
   paymentController.markReceiptGenerated
 );
 
-// Generate and download receipt PDF
+
 router.get(
   "/:paymentId/download-receipt",
   verifyToken,
@@ -59,16 +59,16 @@ router.get(
         return res.status(404).json({ message: "Payment not found" });
       }
 
-      // Generate PDF
+
       const { filepath, filename } = await generatePaymentReceipt({
         ...payment.toObject(),
         invoiceNumber: `INV-${payment.transactionId}`,
       });
 
-      // Send file
+
       res.download(filepath, filename, (err) => {
         if (err) console.error("Download error:", err);
-        // Delete temp file after download
+
         setTimeout(() => {
           fs.unlink(filepath, (err) => {
             if (err) console.error("Error deleting temp file:", err);

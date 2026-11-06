@@ -1,6 +1,6 @@
 const AuditLog = require("../models/AuditLog");
 
-// Log an action (utility function for middleware)
+
 exports.logAction = async (
   userId,
   userRole,
@@ -31,7 +31,7 @@ exports.logAction = async (
   }
 };
 
-// Get all audit logs (Admin only)
+
 exports.getAuditLogs = async (req, res) => {
   try {
     if (req.user.role !== "Admin") {
@@ -85,7 +85,7 @@ exports.getAuditLogs = async (req, res) => {
   }
 };
 
-// Get logs for specific user
+
 exports.getUserAuditLogs = async (req, res) => {
   try {
     if (req.user.role !== "Admin") {
@@ -120,7 +120,7 @@ exports.getUserAuditLogs = async (req, res) => {
   }
 };
 
-// Get logs for specific entity (Property, Booking, etc)
+
 exports.getEntityAuditLogs = async (req, res) => {
   try {
     if (req.user.role !== "Admin") {
@@ -141,7 +141,7 @@ exports.getEntityAuditLogs = async (req, res) => {
   }
 };
 
-// Get audit statistics
+
 exports.getAuditStats = async (req, res) => {
   try {
     if (req.user.role !== "Admin") {
@@ -202,7 +202,7 @@ exports.getAuditStats = async (req, res) => {
   }
 };
 
-// Export audit logs as CSV
+
 exports.exportAuditLogs = async (req, res) => {
   try {
     if (req.user.role !== "Admin") {
@@ -222,7 +222,7 @@ exports.exportAuditLogs = async (req, res) => {
       .populate("userId", "firstName lastName email")
       .sort({ createdAt: -1 });
 
-    // Convert to CSV
+
     const csvHeaders =
       "Timestamp,User,Role,Action,Entity Type,Entity Name,Description,IP Address\n";
     const csvRows = logs

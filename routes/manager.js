@@ -14,13 +14,13 @@ const buildPropertyPayload = (input = {}) => ({
   propertyName: input.propertyName,
   location: input.location,
   rentAmount: toNumberOrZero(input.rentAmount),
-  image: input.image,
+  image: String(input.image || "https://placehold.co/800x500?text=Rental+Property"),
   bedrooms: toNumberOrZero(input.bedrooms),
   bathrooms: toNumberOrZero(input.bathrooms),
   area: String(input.area || ""),
   description: input.description,
   category: input.category || "Apartment",
-  status: input.status || "Vacant",
+  status: input.status === "Occupied" ? "Occupied" : "Vacant",
   managerId: input.managerId || null,
 });
 
@@ -65,7 +65,7 @@ router.get("/properties", async (req, res) => {
 router.get("/users", async (req, res) => {
   try {
     const users = await User.find({}).select(
-      "firstName lastName email role createdAt updatedAt",
+      "firstName lastName email role isSuspended createdAt updatedAt",
     );
     const normalizedUsers = users.map((user) => ({
       ...user.toObject(),
@@ -104,7 +104,13 @@ router.post("/add", async (req, res) => {
 
 router.delete("/delete/:id", async (req, res) => {
   try {
-    await Home.findByIdAndDelete(req.params.id);
+    if (!isObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid property id" });
+    }
+    const deleted = await Home.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ message: "Property not found" });
+    }
     res.json({ message: "Property Deleted" });
   } catch (err) {
     res.status(500).json({ message: "Delete failed" });
@@ -113,6 +119,12 @@ router.delete("/delete/:id", async (req, res) => {
 
 router.delete("/users/:id", async (req, res) => {
   try {
+    if (req.user?.role !== "Admin") {
+      return res.status(403).json({ message: "Only admins can remove users" });
+    }
+    if (!isObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
     if (user.role === "Admin")
@@ -124,10 +136,47 @@ router.delete("/users/:id", async (req, res) => {
   }
 });
 
+router.patch("/users/:id/suspend", async (req, res) => {
+  try {
+    if (req.user?.role !== "Admin") {
+      return res.status(403).json({ message: "Only admins can suspend users" });
+    }
+    if (!isObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!["Manager", "Tenant"].includes(user.role)) {
+      return res.status(400).json({ message: "Admin accounts cannot be suspended" });
+    }
+
+    const suspended = req.body?.suspended !== false;
+    user.isSuspended = suspended;
+    await user.save();
+
+    res.json({
+      message: suspended ? "Manager suspended successfully" : "Manager access restored",
+      isSuspended: user.isSuspended,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to update manager access" });
+  }
+});
+
 router.put("/update/:id", async (req, res) => {
   try {
+    if (!isObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid property id" });
+    }
     const payload = buildPropertyPayload(req.body);
-    await Home.findByIdAndUpdate(req.params.id, payload);
+    const updated = await Home.findByIdAndUpdate(req.params.id, payload, {
+      new: true,
+      runValidators: true,
+    });
+    if (!updated) {
+      return res.status(404).json({ message: "Property not found" });
+    }
     res.json({ message: "Property Updated" });
   } catch (err) {
     res.status(400).json({ message: "Update failed" });

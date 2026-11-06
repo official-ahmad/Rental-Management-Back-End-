@@ -4,7 +4,7 @@ const { verifyToken, authorizeRoles } = require("../middleware/auth");
 
 const router = express.Router();
 
-// Get all audit logs (Admin only)
+
 router.get(
   "/",
   verifyToken,
@@ -12,7 +12,7 @@ router.get(
   auditController.getAuditLogs,
 );
 
-// Get audit statistics (Admin only)
+
 router.get(
   "/stats/overview",
   verifyToken,
@@ -20,7 +20,7 @@ router.get(
   auditController.getAuditStats,
 );
 
-// Get logs for specific user (Admin only)
+
 router.get(
   "/user/:userId",
   verifyToken,
@@ -28,7 +28,7 @@ router.get(
   auditController.getUserAuditLogs,
 );
 
-// Get logs for specific entity (Admin only)
+
 router.get(
   "/entity/:entityType/:entityId",
   verifyToken,
@@ -36,7 +36,7 @@ router.get(
   auditController.getEntityAuditLogs,
 );
 
-// Export audit logs as CSV (Admin only)
+
 router.get(
   "/export/csv",
   verifyToken,

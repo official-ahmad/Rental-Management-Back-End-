@@ -6,10 +6,10 @@ const path = require("path");
 const generatePaymentReceipt = async (paymentData) => {
   return new Promise(async (resolve, reject) => {
     try {
-      // Create PDF document
+
       const doc = new PDFDocument({ size: "A4", margin: 50 });
 
-      // Create temp directory if it doesn't exist
+
       const tempDir = path.join(__dirname, "../temp");
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir);
@@ -21,17 +21,17 @@ const generatePaymentReceipt = async (paymentData) => {
 
       doc.pipe(stream);
 
-      // Professional Header
+
       doc.fontSize(24).font("Helvetica-Bold").text("RENTIFY", 50, 40);
       doc
         .fontSize(10)
         .font("Helvetica")
         .text("Professional Property Management", 50, 68);
 
-      // Horizontal line
+
       doc.moveTo(50, 85).lineTo(545, 85).stroke();
 
-      // Receipt Title
+
       doc.fontSize(18).font("Helvetica-Bold").text("PAYMENT RECEIPT", 50, 110);
       doc
         .fontSize(10)
@@ -47,7 +47,7 @@ const generatePaymentReceipt = async (paymentData) => {
         153,
       );
 
-      // Left Column - Payment Details
+
       doc.fontSize(11).font("Helvetica-Bold").text("Payment Details", 50, 185);
       doc.fontSize(10).font("Helvetica");
       doc.text(`Transaction ID: ${paymentData.transactionId}`, 50, 210);
@@ -67,7 +67,7 @@ const generatePaymentReceipt = async (paymentData) => {
         264,
       );
 
-      // Tenant Information
+
       doc
         .fontSize(11)
         .font("Helvetica-Bold")
@@ -78,7 +78,7 @@ const generatePaymentReceipt = async (paymentData) => {
       doc.text(`Name: ${tenantName}`, 50, 325);
       doc.text(`Email: ${paymentData.tenantId?.email || "N/A"}`, 50, 343);
 
-      // Property Information
+
       doc
         .fontSize(11)
         .font("Helvetica-Bold")
@@ -95,10 +95,10 @@ const generatePaymentReceipt = async (paymentData) => {
         343,
       );
 
-      // Horizontal line
+
       doc.moveTo(50, 380).lineTo(545, 380).stroke();
 
-      // Amount Details
+
       doc.fontSize(11).font("Helvetica-Bold").text("Payment Amount", 50, 410);
       doc.fontSize(10).font("Helvetica");
       doc.text(
@@ -112,7 +112,7 @@ const generatePaymentReceipt = async (paymentData) => {
         453,
       );
 
-      // Late Fees (if any)
+
       if (paymentData.lateFees && paymentData.lateFees > 0) {
         doc.fontSize(10).font("Helvetica");
         doc.text(
@@ -130,14 +130,14 @@ const generatePaymentReceipt = async (paymentData) => {
           );
       }
 
-      // QR Code (with transaction details)
+
       const qrData = `TXN:${paymentData.transactionId}|AMT:${paymentData.amount}|DATE:${new Date(paymentData.createdAt).toLocaleDateString("en-IN")}`;
       const qrCodeImage = await QRCode.toDataURL(qrData);
 
-      // Add QR Code to the right side
+
       doc.image(qrCodeImage, 450, 430, { width: 80, height: 80 });
 
-      // Terms & Conditions
+
       doc.fontSize(9).font("Helvetica").text("Terms & Conditions:", 50, 530);
       doc
         .fontSize(8)
@@ -148,7 +148,7 @@ const generatePaymentReceipt = async (paymentData) => {
           { width: 450, align: "left" },
         );
 
-      // Footer
+
       doc
         .fontSize(8)
         .font("Helvetica")
@@ -165,7 +165,7 @@ const generatePaymentReceipt = async (paymentData) => {
         { width: 450, align: "center" },
       );
 
-      // Finalize PDF
+
       doc.end();
 
       stream.on("finish", () => {

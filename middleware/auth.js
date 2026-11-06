@@ -1,9 +1,5 @@
 const jwt = require("jsonwebtoken");
 
-/**
- * Verifies JWT token from Authorization header.
- * Attaches decoded user { id, role } to req.user
- */
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -22,10 +18,6 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-/**
- * Restrict access to specific roles.
- * Usage: authorizeRoles("Admin", "Manager")
- */
 const authorizeRoles = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {

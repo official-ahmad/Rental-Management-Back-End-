@@ -1,7 +1,3 @@
-/**
- * Global error handling middleware.
- * Catches unhandled errors and returns a clean JSON response.
- */
 const errorHandler = (err, req, res, _next) => {
   console.error("Unhandled Error:", err.message);
 

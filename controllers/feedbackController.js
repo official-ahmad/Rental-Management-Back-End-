@@ -1,6 +1,6 @@
 const Feedback = require("../models/Feedback");
 
-// Submit feedback
+
 exports.submitFeedback = async (req, res) => {
   try {
     const { name, email, description } = req.body;
@@ -31,7 +31,7 @@ exports.submitFeedback = async (req, res) => {
   }
 };
 
-// Get all feedbacks (Admin only)
+
 exports.getAllFeedbacks = async (req, res) => {
   try {
     const feedbacks = await Feedback.find().sort({ createdAt: -1 });
@@ -49,7 +49,7 @@ exports.getAllFeedbacks = async (req, res) => {
   }
 };
 
-// Delete feedback (Admin only)
+
 exports.deleteFeedback = async (req, res) => {
   try {
     const { id } = req.params;
