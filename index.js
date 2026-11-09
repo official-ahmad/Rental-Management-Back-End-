@@ -22,22 +22,30 @@ app.use(compression());
 
 app.use(express.json({ limit: "10mb" }));
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "*",
-  "https://www.rentify.software/",
-];
+const allowedOrigins = new Set(
+  [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://rentify.software",
+    "https://www.rentify.software",
+    "https://rental-management-front-end.vercel.app",
+    process.env.FRONTEND_URL,
+  ]
+    .filter(Boolean)
+    .map((origin) => origin.replace(/\/+$/, "")),
+);
 
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.has(origin.replace(/\/+$/, ""))) {
         return callback(null, true);
       }
       return callback(new Error("CORS not allowed"), false);
     },
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   }),
 );
