@@ -326,7 +326,13 @@ exports.forgotPassword = async (req, res) => {
       .digest("hex");
 
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      requireTLS: true,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
       auth: {
         user: process.env.ADMIN_EMAIL?.trim(),
         pass: process.env.EMAIL_APP_PASSWORD?.replace(/\s/g, ""),
@@ -356,7 +362,11 @@ exports.forgotPassword = async (req, res) => {
     res.status(200).json({ message: "OTP sent to your email" });
   } catch (error) {
     console.error("Forgot Password Error:", error);
-    if (["EAUTH", "ECONNECTION", "ETIMEDOUT", "EDNS"].includes(error.code)) {
+    if (
+      ["EAUTH", "ECONNECTION", "ETIMEDOUT", "EDNS", "ESOCKET"].includes(
+        error.code,
+      )
+    ) {
       return res.status(503).json({
         message: "Unable to send email. Please verify the Gmail App Password in Back-End/.env.",
       });
