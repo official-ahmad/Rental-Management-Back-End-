@@ -2,6 +2,7 @@ const User = require("../models/user");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const https = require("https");
 const nodemailer = require("nodemailer");
 const mongoose = require("mongoose");
 const {
@@ -10,6 +11,52 @@ const {
   recordFailure,
   clearFailures,
 } = require("../middleware/adminLoginLimiter");
+
+const sendResetEmailWithResend = ({ to, subject, html }) =>
+  new Promise((resolve, reject) => {
+    const apiKey = process.env.RESEND_API_KEY?.trim();
+    const from = process.env.EMAIL_FROM?.trim() || process.env.ADMIN_EMAIL?.trim();
+
+    if (!apiKey || !from) {
+      reject(new Error("Resend email service is not configured"));
+      return;
+    }
+
+    const request = https.request(
+      {
+        hostname: "api.resend.com",
+        path: "/emails",
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 15000,
+      },
+      (response) => {
+        let responseBody = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          responseBody += chunk;
+        });
+        response.on("end", () => {
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            resolve();
+            return;
+          }
+
+          const error = new Error(`Resend request failed with status ${response.statusCode}`);
+          error.code = response.statusCode === 401 ? "EAUTH" : "ERESEND";
+          error.responseBody = responseBody;
+          reject(error);
+        });
+      },
+    );
+
+    request.on("timeout", () => request.destroy(new Error("Resend request timed out")));
+    request.on("error", reject);
+    request.end(JSON.stringify({ from, to, subject, html }));
+  });
 
 exports.register = async (req, res) => {
   try {
@@ -309,13 +356,15 @@ exports.forgotPassword = async (req, res) => {
         .status(404)
         .json({ message: "No account found with this email for this role" });
     }
+    const useResend = Boolean(process.env.RESEND_API_KEY?.trim());
     if (
-      !process.env.ADMIN_EMAIL ||
-      !process.env.EMAIL_APP_PASSWORD ||
-      process.env.EMAIL_APP_PASSWORD.includes("paste_your")
+      !useResend &&
+      (!process.env.ADMIN_EMAIL ||
+        !process.env.EMAIL_APP_PASSWORD ||
+        process.env.EMAIL_APP_PASSWORD.includes("paste_your"))
     ) {
       return res.status(503).json({
-        message: "Email service is not configured. Add a Gmail App Password in the backend .env file.",
+        message: "Email service is not configured. Add RESEND_API_KEY or a Gmail App Password.",
       });
     }
 
@@ -325,33 +374,45 @@ exports.forgotPassword = async (req, res) => {
       .update(otp)
       .digest("hex");
 
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false,
-      requireTLS: true,
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-      auth: {
-        user: process.env.ADMIN_EMAIL?.trim(),
-        pass: process.env.EMAIL_APP_PASSWORD?.replace(/\s/g, ""),
-      },
-    });
-
-    await transporter.sendMail({
-      from: `"RentManager" <${process.env.ADMIN_EMAIL}>`,
-      to: normalizedEmail,
-      subject: "Your Rentify password reset OTP",
-      html: `
+    const subject = "Your Rentify password reset OTP";
+    const html = `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background: #f8fafc; border-radius: 16px;">
           <h2 style="color: #0f172a; margin-bottom: 8px;">Password reset OTP</h2>
           <p style="color: #64748b;">Use this one-time code to reset your <strong>${role}</strong> account password.</p>
           <div style="margin: 24px 0; padding: 18px; text-align: center; background: #0f172a; color: #fff; border-radius: 12px; font-size: 32px; letter-spacing: 10px; font-weight: bold;">${otp}</div>
           <p style="color: #94a3b8; font-size: 13px;">This code expires in 10 minutes. If you didn't request this, ignore this email.</p>
         </div>
-      `,
-    });
+      `;
+
+    if (useResend) {
+      await sendResetEmailWithResend({
+        from: process.env.EMAIL_FROM?.trim() || process.env.ADMIN_EMAIL?.trim(),
+        to: normalizedEmail,
+        subject,
+        html,
+      });
+    } else {
+      const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false,
+        requireTLS: true,
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
+        auth: {
+          user: process.env.ADMIN_EMAIL?.trim(),
+          pass: process.env.EMAIL_APP_PASSWORD?.replace(/\s/g, ""),
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"RentManager" <${process.env.ADMIN_EMAIL}>`,
+        to: normalizedEmail,
+        subject,
+        html,
+      });
+    }
 
     user.resetOtpHash = otpHash;
     user.resetOtpExpiry = Date.now() + 10 * 60 * 1000;
@@ -363,12 +424,12 @@ exports.forgotPassword = async (req, res) => {
   } catch (error) {
     console.error("Forgot Password Error:", error);
     if (
-      ["EAUTH", "ECONNECTION", "ETIMEDOUT", "EDNS", "ESOCKET"].includes(
+      ["EAUTH", "ECONNECTION", "ETIMEDOUT", "EDNS", "ESOCKET", "ERESEND"].includes(
         error.code,
       )
     ) {
       return res.status(503).json({
-        message: "Unable to send email. Please verify the Gmail App Password in Back-End/.env.",
+        message: "Unable to send the reset email. Please verify the configured email service.",
       });
     }
     res.status(500).json({ message: "Failed to send reset email" });
